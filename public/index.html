@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethereum Voting System</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.3/dist/web3.min.js"></script>
+    <script type="text/javascript">
+        var contract;
+        window.addEventListener('load', async () => {
+            // Check if Web3 is injected by the browser
+            if (typeof web3 !== 'undefined') {
+                // Use the browser's Ethereum provider
+                window.web3 = new Web3(web3.currentProvider);
+            } else {
+                console.log('No web3 detected. Falling back to http://localhost:8545.');
+                // Fallback to localhost if no web3 injection
+                window.web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
+            }
+
+            // Load the contract ABI
+            const abi = [
+                            {
+                            "inputs": [],
+                            "name": "candidateCount",
+                            "outputs": [
+                                {
+                                "internalType": "uint256",
+                                "name": "",
+                                "type": "uint256"
+                                }
+                            ],
+                            "stateMutability": "view",
+                            "type": "function"
+                            },
+                            {
+                            "inputs": [
+                                {
+                                "internalType": "uint256",
+                                "name": "",
+                                "type": "uint256"
+                                }
+                            ],
+                            "name": "candidates",
+                            "outputs": [
+                                {
+                                "internalType": "uint256",
+                                "name": "id",
+                                "type": "uint256"
+                                },
+                                {
+                                "internalType": "string",
+                                "name": "name",
+                                "type": "string"
+                                },
+                                {
+                                "internalType": "uint256",
+                                "name": "voteCount",
+                                "type": "uint256"
+                                },
+                                {
+                                "internalType": "bool",
+                                "name": "hasVoted",
+                                "type": "bool"
+                                }
+                            ],
+                            "stateMutability": "view",
+                            "type": "function"
+                            },
+                            {
+                            "inputs": [
+                                {
+                                "internalType": "string",
+                                "name": "_name",
+                                "type": "string"
+                                }
+                            ],
+                            "name": "addCandidate",
+                            "outputs": [],
+                            "stateMutability": "nonpayable",
+                            "type": "function"
+                            },
+                            {
+                            "inputs": [
+                                {
+                                "internalType": "uint256",
+                                "name": "candidateIndex",
+                                "type": "uint256"
+                                },
+                                {
+                                "internalType": "uint256",
+                                "name": "voterIndex",
+                                "type": "uint256"
+                                }
+                            ],
+                            "name": "voteCandidate",
+                            "outputs": [],
+                            "stateMutability": "nonpayable",
+                            "type": "function"
+                            },
+                            {
+                            "inputs": [],
+                            "name": "getWinner",
+                            "outputs": [
+                                {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                                }
+                            ],
+                            "stateMutability": "view",
+                            "type": "function"
+                            }
+                        ];
+
+            // Contract address - Replace this with your deployed contract address
+            const contractAddress = '0xc3d02E6e65709139b2D777B642714C68A05De5fC';
+
+            // Instantiate the contract
+            contract = new web3.eth.Contract(abi, contractAddress);
+
+            // Get the total number of candidates
+            const candidateCount = await contract.methods.candidateCount().call();
+
+            let winwinChickenDinner = await contract.methods.getWinner().call().then((winwinChickenDinner)=>{
+                document.getElementById("winnerValue").innerHTML = winwinChickenDinner;
+                console.log("Winner : " + winwinChickenDinner);
+            });
+
+            // Log all candidates
+            for (let i = 1; i <= candidateCount; i++) {
+                const candidate = await contract.methods.candidates(i).call();
+                console.log('Candidate ID:', candidate.id);
+                console.log('Candidate Name:', candidate.name);
+                console.log('Vote Count:', candidate.voteCount);
+                console.log('Has Voted:', candidate.hasVoted);
+
+                var selectElement = document.getElementById("candidateNameList");
+                var selectElement2 = document.getElementById("voterNameList");
+
+                // Create option element for candidate select
+                let option1 = document.createElement("option");
+                option1.text = candidate.name;
+                option1.value = candidate.id;
+                selectElement.add(option1);
+
+                //get not voted user
+                if(candidate.hasVoted == false)
+                {
+                    let listItem = document.createElement("li");
+                    listItem.textContent = candidate.name;
+                    document.getElementById("candidateNotVote").appendChild(listItem);
+                    
+                    // Create option element for voter select
+                    let option2 = document.createElement("option");
+                    option2.text = candidate.name; // You may need to change this to the voter's name if it's available
+                    option2.value = candidate.id; // You may need to change this to the voter's ID if it's available
+                    selectElement2.add(option2);
+                }
+            }
+        });
+
+        async function addCandidate()
+        {
+            const account = await web3.eth.getAccounts().then(accounts => accounts[0]);
+            await contract.methods.addCandidate(document.getElementById("toBeAddCandidateName").value).send({ from: account }).then(()=>{
+                window.location.reload();
+            });
+        }
+
+        async function voteCandidate()
+        {
+            const account = await web3.eth.getAccounts().then(accounts => accounts[0]);
+            await contract.methods.voteCandidate(document.getElementById("candidateNameList").value,document.getElementById("voterNameList").value).send({ from: account }).then(()=>{
+                window.location.reload();
+            });
+        }
+
+        //web3 js.. when to use send and call?
+        //call for read-only operation
+        //send involves altering/add the block in the ledger
+    </script>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Candidate</h2>
+                <div class="form-group">
+                    <select class="form-control mb-3" id="candidateNameList">
+                    </select>
+                    <input type="text" class="form-control mb-3" id="toBeAddCandidateName" placeholder="Enter candidate name">
+                    <button class="btn btn-primary" onclick="addCandidate()">Add Candidate</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h2>Voter</h2>
+                <div class="form-group">
+                    <select class="form-control mb-3" id="voterNameList">
+                    </select>
+                    <button class="btn btn-success" onclick="voteCandidate()">Vote</button>
+                </div>
+            </div>
+        </div>
+    
+        <hr>
+    
+        <div class="row">
+            <div class="col-lg-6">
+                <h1 class="mt-5">Highest voter</h1>
+                <p>Name: <span id="winnerValue">test</span></p>
+            </div>
+            <div class="col-lg-6">
+                <h3 class="mt-5">Candidate not vote yet</h3>
+                <span id="candidateNotVote"></span>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
